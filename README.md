@@ -1,89 +1,90 @@
 # Aya Notulen App
 
-Aya Notulen App adalah aplikasi berbasis Python untuk merekam, mentranskripsi, dan merangkum notulen rapat secara otomatis menggunakan teknologi speech-to-text dan summarization berbasis AI. Aplikasi ini dirancang untuk mempermudah pembuatan notulen dalam bahasa Indonesia dengan akurasi tinggi.
+Aya Notulen App is a Python-based application designed to automatically record, transcribe, and summarize meeting notes using AI-powered speech-to-text and summarization technologies. It is tailored for creating accurate meeting minutes in Indonesian with additional speaker identification capabilities.
 
-## Fitur
-- **Transkripsi Audio**: Mengubah rekaman rapat menjadi teks menggunakan model `faster-whisper`.
-- **Summarization**: Merangkum isi rapat menggunakan model `t5-indonesian-summarization`.
-- **Pengenalan Pembicara**: Mengidentifikasi pembicara dalam rapat dengan `speechbrain` (ECAPA-VoxCeleb).
-- **Database Lokal**: Menyimpan notulen dalam database SQLite (`notulen.db`).
-- **Ekspor PDF**: Menghasilkan laporan notulen dalam format PDF menggunakan `reportlab`.
-- **Antarmuka Konsol**: Mudah digunakan melalui command line (dengan rencana GUI di masa depan).
+## Demo
+<video src="https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" width="600" height="300" controls></video>
 
-## Prasyarat
-Untuk menjalankan Aya Notulen App, kamu perlu:
+*Note: Replace the video URL with the actual link after uploading `demo.mp4` to your GitHub repository, or use a YouTube link like this:*
+```markdown
+[![Demo Aya Notulen App](https://img.youtube.com/vi/VIDEO_ID/hqdefault.jpg)](https://www.youtube.com/watch?v=VIDEO_ID)
+```
+
+## Features
+- **Audio Transcription**: Converts meeting recordings to text using the `faster-whisper` model.
+- **Summarization**: Generates concise summaries of meetings with the `t5-indonesian-summarization` model.
+- **Speaker Identification**: Recognizes speakers using the `speechbrain` ECAPA-VoxCeleb model.
+- **Local Database**: Stores meeting notes in a SQLite database (`notulen.db`).
+- **PDF Export**: Exports meeting minutes as PDF files using `reportlab`.
+- **Console Interface**: Easy-to-use command-line interface (GUI planned for future releases).
+
+## Prerequisites
 - Python 3.8–3.11
-- Virtual environment (disarankan)
-- Sistem operasi: Windows, Linux, atau macOS
-- Ruang penyimpanan cukup untuk model AI (minimal 5 GB)
-- (Opsional) GPU dengan CUDA untuk performa lebih cepat
+- Virtual environment (recommended)
+- Operating system: Windows, Linux, or macOS
+- At least 5 GB of storage for AI models
+- (Optional) GPU with CUDA for faster performance
 
-## Instalasi
-Ikuti langkah-langkah berikut untuk mengatur proyek:
-
-1. **Clone Repository**:
+## Installation
+1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/username/aya-notulen-app.git
+   git clone https://github.com/etriowidodo/aya-notulen-app.git
    cd aya-notulen-app
    ```
-
-2. **Buat Virtual Environment**:
+2. **Set Up a Virtual Environment**:
    ```bash
    python -m venv venv
    .\venv\Scripts\activate  # Windows
    source venv/bin/activate  # Linux/macOS
    ```
-
-3. **Instal Dependensi**:
+3. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
+4. **Download AI Models**:
+   - Models (`ecapa_voxceleb`, `whisper_medium`, `t5-indonesian-summarization`) will be downloaded automatically on first run, or manually place them in the `models/` directory.
 
-4. **Unduh Model AI**:
-   - Model seperti `ecapa_voxceleb`, `whisper_medium`, dan `t5-indonesian-summarization` akan diunduh otomatis saat pertama kali menjalankan aplikasi, atau kamu bisa menyalinnya ke folder `models/` secara manual.
+## Usage
+Run the application:
+```bash
+python notulen_app.py
+```
+- Follow the console prompts to record audio or input an audio file.
+- The app will generate transcripts, summaries, and store them in `notulen.db`.
 
-## Cara Penggunaan
-1. **Jalankan Aplikasi**:
-   ```bash
-   python notulen_app.py
-   ```
-   - Ikuti prompt di konsol untuk merekam audio atau memasukkan file audio.
-   - Aplikasi akan menghasilkan transkrip, ringkasan, dan menyimpannya ke `notulen.db`.
+To build an executable:
+```bash
+pyinstaller build.spec
+```
+- The executable will be in the `dist/Aya_NotulenApp` directory.
 
-2. **Bangun Executable** (opsional):
-   - Untuk membuat file executable yang bisa dijalankan tanpa Python:
-     ```bash
-     pyinstaller build.spec
-     ```
-   - Executable akan ada di folder `dist/Aya_NotulenApp`.
-
-## Struktur Proyek
+## Project Structure
 ```
 aya-notulen-app/
-├── models/                     # Folder untuk model AI
-│   ├── ecapa_voxceleb/        # Model pengenalan pembicara
-│   ├── whisper_medium/        # Model transkripsi
-│   └── t5-indonesian-summarization/  # Model summarization
-├── notulen.db                 # Database SQLite untuk menyimpan notulen
-├── helper.py                  # Fungsi bantu
-├── AYA.ico                    # Ikon aplikasi
-├── notulen_app.py             # Script utama
-├── requirements.txt           # Daftar dependensi
-├── build.spec                 # File konfigurasi PyInstaller
-└── README.md                  # Dokumentasi proyek
+├── models/                     # AI model files
+│   ├── ecapa_voxceleb/        # Speaker identification model
+│   ├── whisper_medium/        # Transcription model
+│   └── t5-indonesian-summarization/  # Summarization model
+├── notulen.db                 # SQLite database for notes
+├── helper.py                  # Helper functions
+├── AYA.ico                    # Application icon
+├── notulen_app.py             # Main script
+├── requirements.txt           # Dependencies
+├── build.spec                 # PyInstaller configuration
+└── README.md                  # Project documentation
 ```
 
-## Kontribusi
-Kami menyambut kontribusi! Jika ingin berkontribusi:
-1. Fork repository ini.
-2. Buat branch baru: `git checkout -b fitur-baru`.
-3. Commit perubahan: `git commit -m "Menambahkan fitur baru"`.
-4. Push ke branch: `git push origin fitur-baru`.
-5. Buat Pull Request di GitHub.
+## Contributing
+Contributions are welcome! To contribute:
+1. Fork this repository.
+2. Create a new branch: `git checkout -b new-feature`.
+3. Commit your changes: `git commit -m "Add new feature"`.
+4. Push to the branch: `git push origin new-feature`.
+5. Create a Pull Request on GitHub.
 
-## Lisensi
-Dilisensikan di bawah [MIT License](LICENSE).
+## License
+[MIT License](LICENSE)
 
-## Kontak
-- **GitHub Issues**: Laporkan bug atau saran di [Issues](https://github.com/username/aya-notulen-app/issues).
-- **Email**: hubungi kami di example@email.com.
+## Contact
+- **GitHub Issues**: Report bugs or suggestions at [Issues](https://github.com/etriowidodo/aya-notulen-app/issues).
+- **Email**: Contact us at example@email.com.
