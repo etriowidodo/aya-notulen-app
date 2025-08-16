@@ -9,6 +9,7 @@ Aya Notulen App is a Python-based application designed to automatically record, 
 - **Speaker Identification**: Recognizes speakers using the `speechbrain` ECAPA-VoxCeleb model.
 - **Local Database**: Stores meeting notes in a SQLite database (`notulen.db`).
 - **PDF Export**: Exports meeting minutes as PDF files using `reportlab`.
+- ** Word Export**: Export meeting minuts as Docx files using  `repotlab`.
 - **Console Interface**: Easy-to-use command-line interface (GUI planned for future releases).
 
 ## Prerequisites
