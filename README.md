@@ -2,8 +2,7 @@
 
 Aya Notulen App is a Python-based application designed to automatically record, transcribe, and summarize meeting notes using AI-powered speech-to-text and summarization technologies. It is tailored for creating accurate meeting minutes in Indonesian with additional speaker identification capabilities.
 
-## Demo
-<video src="https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" width="600" height="300" controls></video>
+
 
 *Note: Replace the video URL with the actual link after uploading `demo.mp4` to your GitHub repository, or use a YouTube link like this:*
 ```markdown
