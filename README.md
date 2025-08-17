@@ -84,4 +84,4 @@ Contributions are welcome! To contribute:
 
 ## Contact
 - **GitHub Issues**: Report bugs or suggestions at [Issues](https://github.com/etriowidodo/aya-notulen-app/issues).
-- **Email**: Contact us at example@email.com.
+- **Email**: Contact us at etriowidodo@mail.com.
