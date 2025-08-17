@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+import tempfile
 import threading
 import queue
 import time
@@ -30,7 +31,8 @@ import sqlite3
 from speechbrain.inference import EncoderClassifier
 from collections import Counter
 from transformers import pipeline, T5Config
-
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -285,31 +287,29 @@ class MeetingExporter:
             await asyncio.sleep(0)
 
     async def export_pdf(self):
-        with self.lock:  # Ensure thread-safe access
+        with self.lock:
             if not self.engine or not self.engine.meeting.utterances:
                 await self.show_warning("Belum ada data rapat")
                 return
         logging.info("Starting PDF export")
-        if not self.engine or not self.engine.meeting.utterances:
-            messagebox.showwarning("Info", "Belum ada data rapat")
-            logging.warning("No meeting data for PDF export")
-            return
-
+        torch.cuda.empty_cache()
         try:
             meeting = self.engine.meeting
             analyzer = MeetingAnalyzer()
             fullAnalyzer = FullMeetingAnalyzer()
-
-            # Prepare data with progress updates
             await self.update_progress(10, 100)
             judul = self.ent_judul.get().strip() or "Notulen Rapat"
             peserta = self.ent_peserta.get().strip()
-            transkrip = self.render_full_transcript_text(meeting)
+            # Simpan transkrip ke file sementara
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as temp_file:
+                for utt in meeting.utterances:
+                    name = meeting.speaker_map.get(utt.speaker_id, utt.speaker_id)
+                    temp_file.write(f"{name}: {utt.text}\n")
+                temp_file_path = temp_file.name
             summary = analyzer.generate_summary(meeting)
             summary = analyzer.generate_conclusion(summary)
             fullsummary = fullAnalyzer.generate_summary(meeting)
             summary = summary + "\n\n=== RINGKASAN NARATIF ===\n" + fullsummary
-
             filename = filedialog.asksaveasfilename(
                 defaultextension=".pdf",
                 filetypes=[("PDF Files", "*.pdf")],
@@ -317,18 +317,18 @@ class MeetingExporter:
             )
             if not filename:
                 logging.info("PDF export canceled by user")
+                os.unlink(temp_file_path)
                 return
-
             try:
                 logging.debug(f"Saving PDF to {filename}")
                 await self.update_progress(40, 100)
                 doc = SimpleDocTemplate(
                     filename,
                     pagesize=A4,
-                    rightMargin=2*cm,
-                    leftMargin=2*cm,
-                    topMargin=2*cm,
-                    bottomMargin=2*cm
+                    rightMargin=2 * cm,
+                    leftMargin=2 * cm,
+                    topMargin=2 * cm,
+                    bottomMargin=2 * cm
                 )
                 styles = getSampleStyleSheet()
                 styles.add(ParagraphStyle(name='Justify', alignment=TA_JUSTIFY))
@@ -352,12 +352,13 @@ class MeetingExporter:
                 story.append(PageBreak())
                 await self.update_progress(80, 100)
                 story.append(Paragraph("<b>Transkrip Lengkap</b>", styles['Heading2']))
-                for line in transkrip.split("\n"):
-                    if ':' in line:
-                        speaker, content = line.split(':', 1)
-                        story.append(Paragraph(f"<b>{speaker}:</b> {content.strip()}", styles['Justify']))
-                    else:
-                        story.append(Paragraph(line.strip(), styles['Justify']))
+                with open(temp_file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if ':' in line:
+                            speaker, content = line.split(':', 1)
+                            story.append(Paragraph(f"<b>{speaker}:</b> {content.strip()}", styles['Justify']))
+                        else:
+                            story.append(Paragraph(line.strip(), styles['Justify']))
                 await self.update_progress(90, 100)
                 story.append(PageBreak())
                 story.append(Paragraph(
@@ -370,123 +371,144 @@ class MeetingExporter:
                 logging.info(f"PDF successfully saved to {filename}")
                 messagebox.showinfo("Sukses", f"PDF berhasil disimpan:\n{filename}")
             except Exception as e:
-                await self.show_error(f"Gagal menyimpan PDF:\n{str(e)}")
+                await self.show_error(f"Gagal menyimpan PDF: {str(e)}")
+            finally:
+                os.unlink(temp_file_path)  # Hapus file sementara
         except Exception as e:
-            await self.show_error(f"Gagal menyimpan PDF:\n{str(e)}")
+            await self.show_error(f"Gagal menyimpan PDF: {str(e)}")
+        finally:
+            del analyzer
+            del fullAnalyzer
+            torch.cuda.empty_cache()
+            import gc
+            gc.collect()
+
     async def export_word(self):
         logging.info("Starting Word export")
+        torch.cuda.empty_cache()
         if not self.engine or not self.engine.meeting.utterances:
-            messagebox.showwarning("Info", "Belum ada data rapat")
-            logging.warning("No meeting data for Word export")
+            await self.show_warning("Belum ada data rapat")
             return
-
-        meeting = self.engine.meeting
-        analyzer = MeetingAnalyzer()
-        fullAnalyzer = FullMeetingAnalyzer()
-        await self.update_progress(10, 100)
-        judul = self.ent_judul.get().strip() or "Notulen Rapat"
-        peserta = self.ent_peserta.get().strip()
-        transkrip = self.render_full_transcript_text(meeting)
-        summary_points = analyzer.generate_summary(meeting)
-        summary_points = analyzer.generate_conclusion(summary_points)
-        summary_narr = fullAnalyzer.generate_summary(meeting)
-        await self.update_progress(30, 100)
-
-        filename = filedialog.asksaveasfilename(
-            defaultextension=".docx",
-            filetypes=[("Word Document", "*.docx")],
-            initialfile=f"Notulen_{meeting.start_time.strftime('%Y%m%d')}.docx"
-        )
-        if not filename:
-            logging.info("Word export canceled by user")
-            return
-
         try:
-            logging.debug(f"Saving Word to {filename}")
-            await self.update_progress(40, 100)
-            doc = Document()
-            await self.update_progress(50, 100)
-            styles = doc.styles
-            if 'Body Small' not in styles:
-                s = styles.add_style('Body Small', WD_STYLE_TYPE.PARAGRAPH)
-                s.font.size = Pt(10)
-                s.font.name = 'Calibri'
-            h = doc.add_heading(judul, level=1)
-            h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            meta = doc.add_paragraph()
-            meta_run = meta.add_run(
-                f"Tanggal: {meeting.start_time.strftime('%d %B %Y')}\n"
-                f"Waktu: {meeting.start_time.strftime('%H:%M')} - {meeting.end_time.strftime('%H:%M')}\n"
-                f"Durasi: {(meeting.end_time - meeting.start_time).total_seconds() / 60:.1f} menit"
+            meeting = self.engine.meeting
+            analyzer = MeetingAnalyzer()
+            fullAnalyzer = FullMeetingAnalyzer()
+            await self.update_progress(10, 100)
+            judul = self.ent_judul.get().strip() or "Notulen Rapat"
+            peserta = self.ent_peserta.get().strip()
+            # Simpan transkrip ke file sementara
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as temp_file:
+                for utt in meeting.utterances:
+                    name = meeting.speaker_map.get(utt.speaker_id, utt.speaker_id)
+                    temp_file.write(f"{name}: {utt.text}\n")
+                temp_file_path = temp_file.name
+            summary_points = analyzer.generate_summary(meeting)
+            summary_points = analyzer.generate_conclusion(summary_points)
+            summary_narr = fullAnalyzer.generate_summary(meeting)
+            await self.update_progress(30, 100)
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".docx",
+                filetypes=[("Word Document", "*.docx")],
+                initialfile=f"Notulen_{meeting.start_time.strftime('%Y%m%d')}.docx"
             )
-            meta.style = doc.styles['Body Small']
-            if peserta:
-                p = doc.add_paragraph()
-                p.add_run(f"Peserta: {peserta}")
-            doc.add_paragraph()
-            await self.update_progress(60, 100)
-            doc.add_heading("Ringkasan (Poin-Poin Utama)", level=2)
-            poin_lines = []
-            for line in summary_points.splitlines():
-                s = line.strip()
-                if not s or s.startswith("===") or s.lower().startswith(("tanggal:", "waktu:", "durasi:")):
-                    continue
-                poin_lines.append(s)
-            wrote_any_point = False
-            for s in poin_lines:
-                if s[0:2].isdigit() or s[:2].replace('.', '').isdigit():
-                    doc.add_paragraph(s, style='List Number')
-                    wrote_any_point = True
-                else:
-                    doc.add_paragraph(s, style='List Bullet')
-            doc.add_paragraph()
-            await self.update_progress(70, 100)
-            doc.add_heading("Ringkasan Naratif", level=2)
-            for line in summary_narr.splitlines():
-                s = line.strip()
-                if not s or s.startswith("===") or s.lower().startswith(("tanggal:", "waktu:", "durasi:")):
-                    continue
-                doc.add_paragraph(s)
-            doc.add_paragraph()
-            await self.update_progress(80, 100)
-            if "=== PARTISIPASI PEMBICARA ===" in summary_narr:
-                doc.add_heading("Partisipasi Pembicara", level=2)
-                part = False
-                for line in summary_narr.splitlines():
-                    if "=== PARTISIPASI PEMBICARA ===" in line:
-                        part = True
+            if not filename:
+                logging.info("Word export canceled by user")
+                os.unlink(temp_file_path)
+                return
+            try:
+                logging.debug(f"Saving Word to {filename}")
+                await self.update_progress(40, 100)
+                doc = Document()
+                await self.update_progress(50, 100)
+                styles = doc.styles
+                if 'Body Small' not in styles:
+                    s = styles.add_style('Body Small', WD_STYLE_TYPE.PARAGRAPH)
+                    s.font.size = Pt(10)
+                    s.font.name = 'Calibri'
+                h = doc.add_heading(judul, level=1)
+                h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                meta = doc.add_paragraph()
+                meta_run = meta.add_run(
+                    f"Tanggal: {meeting.start_time.strftime('%d %B %Y')}\n"
+                    f"Waktu: {meeting.start_time.strftime('%H:%M')} - {meeting.end_time.strftime('%H:%M')}\n"
+                    f"Durasi: {(meeting.end_time - meeting.start_time).total_seconds() / 60:.1f} menit"
+                )
+                meta.style = doc.styles['Body Small']
+                if peserta:
+                    p = doc.add_paragraph()
+                    p.add_run(f"Peserta: {peserta}")
+                doc.add_paragraph()
+                await self.update_progress(60, 100)
+                doc.add_heading("Ringkasan (Poin-Poin Utama)", level=2)
+                poin_lines = []
+                for line in summary_points.splitlines():
+                    s = line.strip()
+                    if not s or s.startswith("===") or s.lower().startswith(("tanggal:", "waktu:", "durasi:")):
                         continue
-                    if part:
-                        s = line.strip()
-                        if not s:
-                            continue
+                    poin_lines.append(s)
+                for s in poin_lines:
+                    if s[0:2].isdigit() or s[:2].replace('.', '').isdigit():
+                        doc.add_paragraph(s, style='List Number')
+                    else:
                         doc.add_paragraph(s, style='List Bullet')
                 doc.add_paragraph()
-            await self.update_progress(90, 100)
-            doc.add_heading("Transkrip Lengkap", level=2)
-            for line in transkrip.splitlines():
-                if ':' in line:
-                    speaker, content = line.split(':', 1)
-                    para = doc.add_paragraph()
-                    run1 = para.add_run(f"{speaker.strip()}: ")
-                    run1.bold = True
-                    para.add_run(content.strip())
-                else:
-                    doc.add_paragraph(line.strip())
-            await self.update_progress(95, 100)
-            doc.add_page_break()
-            f = doc.add_paragraph()
-            f.add_run(
-                f"Dokumen ini dihasilkan otomatis pada {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-                f"Sistem Notulen AYA - Aplikasi Notulen Anak Bangsa"
-            ).italic = True
-            await self.update_progress(100, 100)
-            doc.save(filename)
-            logging.info(f"Word successfully saved to {filename}")
-            messagebox.showinfo("Sukses", f"Word berhasil disimpan:\n{filename}")
+                await self.update_progress(70, 100)
+                doc.add_heading("Ringkasan Naratif", level=2)
+                for line in summary_narr.splitlines():
+                    s = line.strip()
+                    if not s or s.startswith("===") or s.lower().startswith(("tanggal:", "waktu:", "durasi:")):
+                        continue
+                    doc.add_paragraph(s)
+                doc.add_paragraph()
+                await self.update_progress(80, 100)
+                if "=== PARTISIPASI PEMBICARA ===" in summary_narr:
+                    doc.add_heading("Partisipasi Pembicara", level=2)
+                    part = False
+                    for line in summary_narr.splitlines():
+                        if "=== PARTISIPASI PEMBICARA ===" in line:
+                            part = True
+                            continue
+                        if part:
+                            s = line.strip()
+                            if not s:
+                                continue
+                            doc.add_paragraph(s, style='List Bullet')
+                    doc.add_paragraph()
+                await self.update_progress(90, 100)
+                doc.add_heading("Transkrip Lengkap", level=2)
+                with open(temp_file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if ':' in line:
+                            speaker, content = line.split(':', 1)
+                            para = doc.add_paragraph()
+                            run1 = para.add_run(f"{speaker.strip()}: ")
+                            run1.bold = True
+                            para.add_run(content.strip())
+                        else:
+                            doc.add_paragraph(line.strip())
+                await self.update_progress(95, 100)
+                doc.add_page_break()
+                f = doc.add_paragraph()
+                f.add_run(
+                    f"Dokumen ini dihasilkan otomatis pada {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+                    f"Sistem Notulen AYA - Aplikasi Notulen Anak Bangsa"
+                ).italic = True
+                await self.update_progress(100, 100)
+                doc.save(filename)
+                logging.info(f"Word successfully saved to {filename}")
+                messagebox.showinfo("Sukses", f"Word berhasil disimpan:\n{filename}")
+            except Exception as e:
+                await self.show_error(f"Gagal menyimpan Word: {str(e)}")
+            finally:
+                os.unlink(temp_file_path)  # Hapus file sementara
         except Exception as e:
-            logging.error(f"Failed to save Word: {str(e)}", exc_info=True)
-            messagebox.showerror("Error", f"Gagal menyimpan Word:\n{str(e)}")
+            await self.show_error(f"Gagal menyimpan Word: {str(e)}")
+        finally:
+            del analyzer
+            del fullAnalyzer
+            torch.cuda.empty_cache()
+            import gc
+            gc.collect()
     async def show_warning(self, message):
         """Thread-safe warning message"""
 
@@ -1274,9 +1296,11 @@ class RealTimeDiarizationTranscriber:
             )
             text = " ".join(seg.text.strip() for seg in segments).strip()
             logging.info(f"Transcription completed: {text}")
+            torch.cuda.empty_cache()
             return text
         except Exception as e:
             logging.error(f"Transcription error: {str(e)}", exc_info=True)
+            torch.cuda.empty_cache()
             return ""
 
     def _finalize_current_segment(self):
