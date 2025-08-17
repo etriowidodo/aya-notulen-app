@@ -2,13 +2,6 @@
 
 Aya Notulen App is a Python-based application designed to automatically record, transcribe, and summarize meeting notes using AI-powered speech-to-text and summarization technologies. It is tailored for creating accurate meeting minutes in Indonesian with additional speaker identification capabilities.
 
-## Demo
-<video src="https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" width="600" height="300" controls></video>
-
-*Note: Replace the video URL with the actual link after uploading `demo.mp4` to your GitHub repository, or use a YouTube link like this:*
-```markdown
-[![Demo Aya Notulen App](https://img.youtube.com/vi/VIDEO_ID/hqdefault.jpg)](https://www.youtube.com/watch?v=VIDEO_ID)
-```
 
 ## Features
 - **Audio Transcription**: Converts meeting recordings to text using the `faster-whisper` model.
@@ -16,6 +9,7 @@ Aya Notulen App is a Python-based application designed to automatically record, 
 - **Speaker Identification**: Recognizes speakers using the `speechbrain` ECAPA-VoxCeleb model.
 - **Local Database**: Stores meeting notes in a SQLite database (`notulen.db`).
 - **PDF Export**: Exports meeting minutes as PDF files using `reportlab`.
+- ** Word Export**: Export meeting minuts as Docx files using  `python-docx`.
 - **Console Interface**: Easy-to-use command-line interface (GUI planned for future releases).
 
 ## Prerequisites
@@ -43,6 +37,9 @@ Aya Notulen App is a Python-based application designed to automatically record, 
    ```
 4. **Download AI Models**:
    - Models (`ecapa_voxceleb`, `whisper_medium`, `t5-indonesian-summarization`) will be downloaded automatically on first run, or manually place them in the `models/` directory.
+
+## Download
+Get the latest release: [Download AyaNotulenApp.rar](https://www.mediafire.com/file/edw9cdztvri04vt/AyaNotulenApp.rar/file)
 
 ## Usage
 Run the application:
